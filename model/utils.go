@@ -536,3 +536,18 @@ func checkNowhereNil(t *testing.T, name string, value interface{}) bool {
 		return true
 	}
 }
+
+func RemoveDuplicateStrings(in []string) []string {
+	out := []string{}
+	seen := make(map[string]bool)
+
+	for _, item := range in {
+		if !seen[item] {
+			out = append(out, item)
+
+			seen[item] = true
+		}
+	}
+
+	return out
+}
