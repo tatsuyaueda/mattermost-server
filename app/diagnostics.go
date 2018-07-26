@@ -4,6 +4,7 @@
 package app
 
 import (
+	"path/filepath"
 	"runtime"
 
 	"github.com/mattermost/mattermost-server/mlog"
@@ -251,6 +252,7 @@ func (a *App) trackConfig() {
 		"experimental_enable_hardened_mode":                       *cfg.ServiceSettings.ExperimentalEnableHardenedMode,
 		"experimental_limit_client_config":                        *cfg.ServiceSettings.ExperimentalLimitClientConfig,
 		"enable_email_invitations":                                *cfg.ServiceSettings.EnableEmailInvitations,
+		"experimental_channel_organization":                       *cfg.ServiceSettings.ExperimentalChannelOrganization,
 	})
 
 	a.SendDiagnostic(TRACK_CONFIG_TEAM, map[string]interface{}{
@@ -282,6 +284,7 @@ func (a *App) trackConfig() {
 		"experimental_town_square_is_hidden_in_lhs": *cfg.TeamSettings.ExperimentalHideTownSquareinLHS,
 		"experimental_town_square_is_read_only":     *cfg.TeamSettings.ExperimentalTownSquareIsReadOnly,
 		"experimental_primary_team":                 isDefault(*cfg.TeamSettings.ExperimentalPrimaryTeam, ""),
+		"experimental_default_channels":             len(cfg.TeamSettings.ExperimentalDefaultChannels),
 	})
 
 	a.SendDiagnostic(TRACK_CONFIG_CLIENT_REQ, map[string]interface{}{
@@ -326,6 +329,8 @@ func (a *App) trackConfig() {
 	a.SendDiagnostic(TRACK_CONFIG_FILE, map[string]interface{}{
 		"enable_public_links":     cfg.FileSettings.EnablePublicLink,
 		"driver_name":             *cfg.FileSettings.DriverName,
+		"isdefault_directory":     isDefault(cfg.FileSettings.Directory, model.FILE_SETTINGS_DEFAULT_DIRECTORY),
+		"isabsolute_directory":    filepath.IsAbs(cfg.FileSettings.Directory),
 		"amazon_s3_ssl":           *cfg.FileSettings.AmazonS3SSL,
 		"amazon_s3_sse":           *cfg.FileSettings.AmazonS3SSE,
 		"amazon_s3_signv2":        *cfg.FileSettings.AmazonS3SignV2,
@@ -585,18 +590,18 @@ func (a *App) trackPlugins() {
 				}
 				if state, ok := pluginStates[plugin.Manifest.Id]; ok && state.Enable {
 					totalEnabledCount += 1
-					if plugin.Manifest.Backend != nil {
+					if plugin.Manifest.HasServer() {
 						backendEnabledCount += 1
 					}
-					if plugin.Manifest.Webapp != nil {
+					if plugin.Manifest.HasWebapp() {
 						webappEnabledCount += 1
 					}
 				} else {
 					totalDisabledCount += 1
-					if plugin.Manifest.Backend != nil {
+					if plugin.Manifest.HasServer() {
 						backendDisabledCount += 1
 					}
-					if plugin.Manifest.Webapp != nil {
+					if plugin.Manifest.HasWebapp() {
 						webappDisabledCount += 1
 					}
 				}

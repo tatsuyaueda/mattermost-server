@@ -716,6 +716,94 @@ func (s *apiRPCServer) UpdateUser(args *Z_UpdateUserArgs, returns *Z_UpdateUserR
 	return nil
 }
 
+type Z_GetUserStatusArgs struct {
+	A string
+}
+
+type Z_GetUserStatusReturns struct {
+	A *model.Status
+	B *model.AppError
+}
+
+func (g *apiRPCClient) GetUserStatus(userId string) (*model.Status, *model.AppError) {
+	_args := &Z_GetUserStatusArgs{userId}
+	_returns := &Z_GetUserStatusReturns{}
+	if err := g.client.Call("Plugin.GetUserStatus", _args, _returns); err != nil {
+		g.log.Error("RPC call to GetUserStatus API failed.", mlog.Err(err))
+	}
+	return _returns.A, _returns.B
+}
+
+func (s *apiRPCServer) GetUserStatus(args *Z_GetUserStatusArgs, returns *Z_GetUserStatusReturns) error {
+	if hook, ok := s.impl.(interface {
+		GetUserStatus(userId string) (*model.Status, *model.AppError)
+	}); ok {
+		returns.A, returns.B = hook.GetUserStatus(args.A)
+	} else {
+		return fmt.Errorf("API GetUserStatus called but not implemented.")
+	}
+	return nil
+}
+
+type Z_GetUserStatusesByIdsArgs struct {
+	A []string
+}
+
+type Z_GetUserStatusesByIdsReturns struct {
+	A []*model.Status
+	B *model.AppError
+}
+
+func (g *apiRPCClient) GetUserStatusesByIds(userIds []string) ([]*model.Status, *model.AppError) {
+	_args := &Z_GetUserStatusesByIdsArgs{userIds}
+	_returns := &Z_GetUserStatusesByIdsReturns{}
+	if err := g.client.Call("Plugin.GetUserStatusesByIds", _args, _returns); err != nil {
+		g.log.Error("RPC call to GetUserStatusesByIds API failed.", mlog.Err(err))
+	}
+	return _returns.A, _returns.B
+}
+
+func (s *apiRPCServer) GetUserStatusesByIds(args *Z_GetUserStatusesByIdsArgs, returns *Z_GetUserStatusesByIdsReturns) error {
+	if hook, ok := s.impl.(interface {
+		GetUserStatusesByIds(userIds []string) ([]*model.Status, *model.AppError)
+	}); ok {
+		returns.A, returns.B = hook.GetUserStatusesByIds(args.A)
+	} else {
+		return fmt.Errorf("API GetUserStatusesByIds called but not implemented.")
+	}
+	return nil
+}
+
+type Z_UpdateUserStatusArgs struct {
+	A string
+	B string
+}
+
+type Z_UpdateUserStatusReturns struct {
+	A *model.Status
+	B *model.AppError
+}
+
+func (g *apiRPCClient) UpdateUserStatus(userId, status string) (*model.Status, *model.AppError) {
+	_args := &Z_UpdateUserStatusArgs{userId, status}
+	_returns := &Z_UpdateUserStatusReturns{}
+	if err := g.client.Call("Plugin.UpdateUserStatus", _args, _returns); err != nil {
+		g.log.Error("RPC call to UpdateUserStatus API failed.", mlog.Err(err))
+	}
+	return _returns.A, _returns.B
+}
+
+func (s *apiRPCServer) UpdateUserStatus(args *Z_UpdateUserStatusArgs, returns *Z_UpdateUserStatusReturns) error {
+	if hook, ok := s.impl.(interface {
+		UpdateUserStatus(userId, status string) (*model.Status, *model.AppError)
+	}); ok {
+		returns.A, returns.B = hook.UpdateUserStatus(args.A, args.B)
+	} else {
+		return fmt.Errorf("API UpdateUserStatus called but not implemented.")
+	}
+	return nil
+}
+
 type Z_CreateTeamArgs struct {
 	A *model.Team
 }
@@ -1198,8 +1286,8 @@ type Z_GetChannelByNameReturns struct {
 	B *model.AppError
 }
 
-func (g *apiRPCClient) GetChannelByName(name, teamId string) (*model.Channel, *model.AppError) {
-	_args := &Z_GetChannelByNameArgs{name, teamId}
+func (g *apiRPCClient) GetChannelByName(teamId, name string) (*model.Channel, *model.AppError) {
+	_args := &Z_GetChannelByNameArgs{teamId, name}
 	_returns := &Z_GetChannelByNameReturns{}
 	if err := g.client.Call("Plugin.GetChannelByName", _args, _returns); err != nil {
 		g.log.Error("RPC call to GetChannelByName API failed.", mlog.Err(err))
@@ -1209,11 +1297,41 @@ func (g *apiRPCClient) GetChannelByName(name, teamId string) (*model.Channel, *m
 
 func (s *apiRPCServer) GetChannelByName(args *Z_GetChannelByNameArgs, returns *Z_GetChannelByNameReturns) error {
 	if hook, ok := s.impl.(interface {
-		GetChannelByName(name, teamId string) (*model.Channel, *model.AppError)
+		GetChannelByName(teamId, name string) (*model.Channel, *model.AppError)
 	}); ok {
 		returns.A, returns.B = hook.GetChannelByName(args.A, args.B)
 	} else {
 		return fmt.Errorf("API GetChannelByName called but not implemented.")
+	}
+	return nil
+}
+
+type Z_GetChannelByNameForTeamNameArgs struct {
+	A string
+	B string
+}
+
+type Z_GetChannelByNameForTeamNameReturns struct {
+	A *model.Channel
+	B *model.AppError
+}
+
+func (g *apiRPCClient) GetChannelByNameForTeamName(teamName, channelName string) (*model.Channel, *model.AppError) {
+	_args := &Z_GetChannelByNameForTeamNameArgs{teamName, channelName}
+	_returns := &Z_GetChannelByNameForTeamNameReturns{}
+	if err := g.client.Call("Plugin.GetChannelByNameForTeamName", _args, _returns); err != nil {
+		g.log.Error("RPC call to GetChannelByNameForTeamName API failed.", mlog.Err(err))
+	}
+	return _returns.A, _returns.B
+}
+
+func (s *apiRPCServer) GetChannelByNameForTeamName(args *Z_GetChannelByNameForTeamNameArgs, returns *Z_GetChannelByNameForTeamNameReturns) error {
+	if hook, ok := s.impl.(interface {
+		GetChannelByNameForTeamName(teamName, channelName string) (*model.Channel, *model.AppError)
+	}); ok {
+		returns.A, returns.B = hook.GetChannelByNameForTeamName(args.A, args.B)
+	} else {
+		return fmt.Errorf("API GetChannelByNameForTeamName called but not implemented.")
 	}
 	return nil
 }

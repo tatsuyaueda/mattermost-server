@@ -97,6 +97,8 @@ const (
 
 	SQL_SETTINGS_DEFAULT_DATA_SOURCE = "mmuser:mostest@tcp(dockerhost:3306)/mattermost_test?charset=utf8mb4,utf8&readTimeout=30s&writeTimeout=30s"
 
+	FILE_SETTINGS_DEFAULT_DIRECTORY = "./data/"
+
 	EMAIL_SETTINGS_DEFAULT_FEEDBACK_ORGANIZATION = ""
 
 	SUPPORT_SETTINGS_DEFAULT_TERMS_OF_SERVICE_LINK = "https://about.mattermost.com/default-terms/"
@@ -231,6 +233,7 @@ type ServiceSettings struct {
 	EnableTutorial                                    *bool
 	ExperimentalEnableDefaultChannelLeaveJoinMessages *bool
 	ExperimentalGroupUnreadChannels                   *string
+	ExperimentalChannelOrganization                   *bool
 	ImageProxyType                                    *string
 	ImageProxyURL                                     *string
 	ImageProxyOptions                                 *string
@@ -474,6 +477,11 @@ func (s *ServiceSettings) SetDefaults() {
 		s.ExperimentalGroupUnreadChannels = NewString(GROUP_UNREAD_CHANNELS_DISABLED)
 	} else if *s.ExperimentalGroupUnreadChannels == "1" {
 		s.ExperimentalGroupUnreadChannels = NewString(GROUP_UNREAD_CHANNELS_DEFAULT_ON)
+	}
+
+	if s.ExperimentalChannelOrganization == nil {
+		experimentalUnreadEnabled := *s.ExperimentalGroupUnreadChannels != GROUP_UNREAD_CHANNELS_DISABLED
+		s.ExperimentalChannelOrganization = NewBool(experimentalUnreadEnabled)
 	}
 
 	if s.ImageProxyType == nil {
@@ -789,7 +797,7 @@ func (s *FileSettings) SetDefaults() {
 	}
 
 	if s.Directory == "" {
-		s.Directory = "./data/"
+		s.Directory = FILE_SETTINGS_DEFAULT_DIRECTORY
 	}
 }
 
@@ -904,6 +912,21 @@ func (s *EmailSettings) SetDefaults() {
 
 	if s.LoginButtonTextColor == nil {
 		s.LoginButtonTextColor = NewString("#2389D7")
+	}
+}
+
+type ExtensionSettings struct {
+	EnableExperimentalExtensions *bool
+	AllowedExtensionsIDs         []string
+}
+
+func (s *ExtensionSettings) SetDefaults() {
+	if s.EnableExperimentalExtensions == nil {
+		s.EnableExperimentalExtensions = NewBool(false)
+	}
+
+	if s.AllowedExtensionsIDs == nil {
+		s.AllowedExtensionsIDs = []string{}
 	}
 }
 
@@ -1088,6 +1111,7 @@ type TeamSettings struct {
 	ExperimentalHideTownSquareinLHS     *bool
 	ExperimentalTownSquareIsReadOnly    *bool
 	ExperimentalPrimaryTeam             *string
+	ExperimentalDefaultChannels         []string
 }
 
 func (s *TeamSettings) SetDefaults() {
@@ -1198,6 +1222,10 @@ func (s *TeamSettings) SetDefaults() {
 
 	if s.ExperimentalPrimaryTeam == nil {
 		s.ExperimentalPrimaryTeam = NewString("")
+	}
+
+	if s.ExperimentalDefaultChannels == nil {
+		s.ExperimentalDefaultChannels = []string{}
 	}
 
 	if s.EnableTeamCreation == nil {
@@ -1870,6 +1898,7 @@ type Config struct {
 	PasswordSettings      PasswordSettings
 	FileSettings          FileSettings
 	EmailSettings         EmailSettings
+	ExtensionSettings     ExtensionSettings
 	RateLimitSettings     RateLimitSettings
 	PrivacySettings       PrivacySettings
 	SupportSettings       SupportSettings
@@ -1967,6 +1996,7 @@ func (o *Config) SetDefaults() {
 	o.MessageExportSettings.SetDefaults()
 	o.TimezoneSettings.SetDefaults()
 	o.DisplaySettings.SetDefaults()
+	o.ExtensionSettings.SetDefaults()
 }
 
 func (o *Config) IsValid() *AppError {

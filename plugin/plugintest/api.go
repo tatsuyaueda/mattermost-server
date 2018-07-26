@@ -308,13 +308,13 @@ func (_m *API) GetChannel(channelId string) (*model.Channel, *model.AppError) {
 	return r0, r1
 }
 
-// GetChannelByName provides a mock function with given fields: name, teamId
-func (_m *API) GetChannelByName(name string, teamId string) (*model.Channel, *model.AppError) {
-	ret := _m.Called(name, teamId)
+// GetChannelByName provides a mock function with given fields: teamId, name
+func (_m *API) GetChannelByName(teamId string, name string) (*model.Channel, *model.AppError) {
+	ret := _m.Called(teamId, name)
 
 	var r0 *model.Channel
 	if rf, ok := ret.Get(0).(func(string, string) *model.Channel); ok {
-		r0 = rf(name, teamId)
+		r0 = rf(teamId, name)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*model.Channel)
@@ -323,7 +323,32 @@ func (_m *API) GetChannelByName(name string, teamId string) (*model.Channel, *mo
 
 	var r1 *model.AppError
 	if rf, ok := ret.Get(1).(func(string, string) *model.AppError); ok {
-		r1 = rf(name, teamId)
+		r1 = rf(teamId, name)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
+// GetChannelByNameForTeamName provides a mock function with given fields: teamName, channelName
+func (_m *API) GetChannelByNameForTeamName(teamName string, channelName string) (*model.Channel, *model.AppError) {
+	ret := _m.Called(teamName, channelName)
+
+	var r0 *model.Channel
+	if rf, ok := ret.Get(0).(func(string, string) *model.Channel); ok {
+		r0 = rf(teamName, channelName)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.Channel)
+		}
+	}
+
+	var r1 *model.AppError
+	if rf, ok := ret.Get(1).(func(string, string) *model.AppError); ok {
+		r1 = rf(teamName, channelName)
 	} else {
 		if ret.Get(1) != nil {
 			r1 = ret.Get(1).(*model.AppError)
@@ -674,6 +699,56 @@ func (_m *API) GetUserByUsername(name string) (*model.User, *model.AppError) {
 	return r0, r1
 }
 
+// GetUserStatus provides a mock function with given fields: userId
+func (_m *API) GetUserStatus(userId string) (*model.Status, *model.AppError) {
+	ret := _m.Called(userId)
+
+	var r0 *model.Status
+	if rf, ok := ret.Get(0).(func(string) *model.Status); ok {
+		r0 = rf(userId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.Status)
+		}
+	}
+
+	var r1 *model.AppError
+	if rf, ok := ret.Get(1).(func(string) *model.AppError); ok {
+		r1 = rf(userId)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
+// GetUserStatusesByIds provides a mock function with given fields: userIds
+func (_m *API) GetUserStatusesByIds(userIds []string) ([]*model.Status, *model.AppError) {
+	ret := _m.Called(userIds)
+
+	var r0 []*model.Status
+	if rf, ok := ret.Get(0).(func([]string) []*model.Status); ok {
+		r0 = rf(userIds)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.Status)
+		}
+	}
+
+	var r1 *model.AppError
+	if rf, ok := ret.Get(1).(func([]string) *model.AppError); ok {
+		r1 = rf(userIds)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
 // KVDelete provides a mock function with given fields: key
 func (_m *API) KVDelete(key string) *model.AppError {
 	ret := _m.Called(key)
@@ -1008,6 +1083,31 @@ func (_m *API) UpdateUser(user *model.User) (*model.User, *model.AppError) {
 	var r1 *model.AppError
 	if rf, ok := ret.Get(1).(func(*model.User) *model.AppError); ok {
 		r1 = rf(user)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*model.AppError)
+		}
+	}
+
+	return r0, r1
+}
+
+// UpdateUserStatus provides a mock function with given fields: userId, status
+func (_m *API) UpdateUserStatus(userId string, status string) (*model.Status, *model.AppError) {
+	ret := _m.Called(userId, status)
+
+	var r0 *model.Status
+	if rf, ok := ret.Get(0).(func(string, string) *model.Status); ok {
+		r0 = rf(userId, status)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.Status)
+		}
+	}
+
+	var r1 *model.AppError
+	if rf, ok := ret.Get(1).(func(string, string) *model.AppError); ok {
+		r1 = rf(userId, status)
 	} else {
 		if ret.Get(1) != nil {
 			r1 = ret.Get(1).(*model.AppError)
