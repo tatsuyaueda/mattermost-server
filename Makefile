@@ -72,6 +72,9 @@ TESTFLAGSEE ?= -short
 TE_PACKAGES=$(shell go list ./...)
 TE_PACKAGES_COMMA=$(shell echo $(TE_PACKAGES) | tr ' ' ',')
 
+# Plugins Packages
+PLUGIN_PACKAGES=mattermost-plugin-zoom mattermost-plugin-jira
+
 # Prepares the enterprise build if exists. The IGNORE stuff is a hack to get the Makefile to execute the commands outside a target
 ifeq ($(BUILD_ENTERPRISE_READY),true)
 	IGNORE:=$(shell echo Enterprise build selected, preparing)
@@ -282,7 +285,6 @@ ldap-mocks: ## Creates mock files for ldap.
 plugin-mocks: ## Creates mock files for plugins.
 	go get github.com/vektra/mockery/...
 	$(GOPATH)/bin/mockery -dir plugin -name API -output plugin/plugintest -outpkg plugintest -case underscore -note 'Regenerate this file using `make plugin-mocks`.'
-	$(GOPATH)/bin/mockery -dir plugin -name API -inpkg -output plugin -testonly -outpkg plugin -case underscore -note 'Regenerate this file using `make plugin-mocks`.'
 	$(GOPATH)/bin/mockery -dir plugin -name Hooks -output plugin/plugintest -outpkg plugintest -case underscore -note 'Regenerate this file using `make plugin-mocks`.'
 
 pluginapi: ## Generates api and hooks glue code for plugins

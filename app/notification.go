@@ -6,7 +6,6 @@ package app
 import (
 	"fmt"
 	"html"
-	"html/template"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -436,7 +435,13 @@ func (a *App) sendNotificationEmail(post *model.Post, user *model.User, channel 
 		// fall back to sending a single email if we can't batch it for some reason
 	}
 
+	var useMilitaryTime bool
 	translateFunc := utils.GetUserTranslations(user.Locale)
+	if result := <-a.Srv.Store.Preference().Get(user.Id, model.PREFERENCE_CATEGORY_DISPLAY_SETTINGS, "use_military_time"); result.Err != nil {
+		useMilitaryTime = true
+	} else {
+		useMilitaryTime = result.Data.(model.Preference).Value == "true"
+	}
 
 	emailNotificationContentsType := model.EMAIL_NOTIFICATION_CONTENTS_FULL
 	if license := a.License(); license != nil && *license.Features.EmailNotificationContents {
@@ -445,17 +450,17 @@ func (a *App) sendNotificationEmail(post *model.Post, user *model.User, channel 
 
 	var subjectText string
 	if channel.Type == model.CHANNEL_DIRECT {
-		subjectText = getDirectMessageNotificationEmailSubject(post, translateFunc, a.Config().TeamSettings.SiteName, senderName)
+		subjectText = getDirectMessageNotificationEmailSubject(user, post, translateFunc, a.Config().TeamSettings.SiteName, senderName, useMilitaryTime)
 	} else if channel.Type == model.CHANNEL_GROUP {
-		subjectText = getGroupMessageNotificationEmailSubject(post, translateFunc, a.Config().TeamSettings.SiteName, channelName, emailNotificationContentsType)
+		subjectText = getGroupMessageNotificationEmailSubject(user, post, translateFunc, a.Config().TeamSettings.SiteName, channelName, emailNotificationContentsType, useMilitaryTime)
 	} else if *a.Config().EmailSettings.UseChannelInEmailNotifications {
-		subjectText = getNotificationEmailSubject(post, translateFunc, a.Config().TeamSettings.SiteName, team.DisplayName+" ("+channel.DisplayName+")")
+		subjectText = getNotificationEmailSubject(user, post, translateFunc, a.Config().TeamSettings.SiteName, team.DisplayName+" ("+channel.DisplayName+")", useMilitaryTime)
 	} else {
-		subjectText = getNotificationEmailSubject(post, translateFunc, a.Config().TeamSettings.SiteName, team.DisplayName)
+		subjectText = getNotificationEmailSubject(user, post, translateFunc, a.Config().TeamSettings.SiteName, team.DisplayName, useMilitaryTime)
 	}
 
 	teamURL := a.GetSiteURL() + "/" + team.Name
-	var bodyText = a.getNotificationEmailBody(user, post, channel, channelName, senderName, team.Name, teamURL, emailNotificationContentsType, translateFunc)
+	var bodyText = a.getNotificationEmailBody(user, post, channel, channelName, senderName, team.Name, teamURL, emailNotificationContentsType, useMilitaryTime, translateFunc)
 
 	a.Go(func() {
 		if err := a.SendMail(user.Email, html.UnescapeString(subjectText), bodyText); err != nil {
@@ -473,8 +478,8 @@ func (a *App) sendNotificationEmail(post *model.Post, user *model.User, channel 
 /**
  * Computes the subject line for direct notification email messages
  */
-func getDirectMessageNotificationEmailSubject(post *model.Post, translateFunc i18n.TranslateFunc, siteName string, senderName string) string {
-	t := getFormattedPostTime(post, translateFunc)
+func getDirectMessageNotificationEmailSubject(user *model.User, post *model.Post, translateFunc i18n.TranslateFunc, siteName string, senderName string, useMilitaryTime bool) string {
+	t := getFormattedPostTime(user, post, useMilitaryTime, translateFunc)
 	var subjectParameters = map[string]interface{}{
 		"SiteName":          siteName,
 		"SenderDisplayName": senderName,
@@ -488,8 +493,8 @@ func getDirectMessageNotificationEmailSubject(post *model.Post, translateFunc i1
 /**
  * Computes the subject line for group, public, and private email messages
  */
-func getNotificationEmailSubject(post *model.Post, translateFunc i18n.TranslateFunc, siteName string, teamName string) string {
-	t := getFormattedPostTime(post, translateFunc)
+func getNotificationEmailSubject(user *model.User, post *model.Post, translateFunc i18n.TranslateFunc, siteName string, teamName string, useMilitaryTime bool) string {
+	t := getFormattedPostTime(user, post, useMilitaryTime, translateFunc)
 	var subjectParameters = map[string]interface{}{
 		"SiteName": siteName,
 		"TeamName": teamName,
@@ -503,8 +508,8 @@ func getNotificationEmailSubject(post *model.Post, translateFunc i18n.TranslateF
 /**
  * Computes the subject line for group email messages
  */
-func getGroupMessageNotificationEmailSubject(post *model.Post, translateFunc i18n.TranslateFunc, siteName string, channelName string, emailNotificationContentsType string) string {
-	t := getFormattedPostTime(post, translateFunc)
+func getGroupMessageNotificationEmailSubject(user *model.User, post *model.Post, translateFunc i18n.TranslateFunc, siteName string, channelName string, emailNotificationContentsType string, useMilitaryTime bool) string {
+	t := getFormattedPostTime(user, post, useMilitaryTime, translateFunc)
 	var subjectText string
 	if emailNotificationContentsType == model.EMAIL_NOTIFICATION_CONTENTS_FULL {
 		var subjectParameters = map[string]interface{}{
@@ -530,7 +535,7 @@ func getGroupMessageNotificationEmailSubject(post *model.Post, translateFunc i18
 /**
  * Computes the email body for notification messages
  */
-func (a *App) getNotificationEmailBody(recipient *model.User, post *model.Post, channel *model.Channel, channelName string, senderName string, teamName string, teamURL string, emailNotificationContentsType string, translateFunc i18n.TranslateFunc) string {
+func (a *App) getNotificationEmailBody(recipient *model.User, post *model.Post, channel *model.Channel, channelName string, senderName string, teamName string, teamURL string, emailNotificationContentsType string, useMilitaryTime bool, translateFunc i18n.TranslateFunc) string {
 	// only include message contents in notification email if email notification contents type is set to full
 	var bodyPage *utils.HTMLTemplate
 	if emailNotificationContentsType == model.EMAIL_NOTIFICATION_CONTENTS_FULL {
@@ -547,14 +552,13 @@ func (a *App) getNotificationEmailBody(recipient *model.User, post *model.Post, 
 		bodyPage.Props["TeamLink"] = teamURL
 	}
 
-	t := getFormattedPostTime(post, translateFunc)
+	t := getFormattedPostTime(recipient, post, useMilitaryTime, translateFunc)
 
-	var bodyText string
-	var info template.HTML
 	if channel.Type == model.CHANNEL_DIRECT {
 		if emailNotificationContentsType == model.EMAIL_NOTIFICATION_CONTENTS_FULL {
-			bodyText = translateFunc("app.notification.body.intro.direct.full")
-			info = utils.TranslateAsHtml(translateFunc, "app.notification.body.text.direct.full",
+			bodyPage.Props["BodyText"] = translateFunc("app.notification.body.intro.direct.full")
+			bodyPage.Props["Info1"] = ""
+			bodyPage.Props["Info2"] = translateFunc("app.notification.body.text.direct.full",
 				map[string]interface{}{
 					"SenderName": senderName,
 					"Hour":       t.Hour,
@@ -564,10 +568,10 @@ func (a *App) getNotificationEmailBody(recipient *model.User, post *model.Post, 
 					"Day":        t.Day,
 				})
 		} else {
-			bodyText = translateFunc("app.notification.body.intro.direct.generic", map[string]interface{}{
+			bodyPage.Props["BodyText"] = translateFunc("app.notification.body.intro.direct.generic", map[string]interface{}{
 				"SenderName": senderName,
 			})
-			info = utils.TranslateAsHtml(translateFunc, "app.notification.body.text.direct.generic",
+			bodyPage.Props["Info"] = translateFunc("app.notification.body.text.direct.generic",
 				map[string]interface{}{
 					"Hour":     t.Hour,
 					"Minute":   t.Minute,
@@ -578,22 +582,25 @@ func (a *App) getNotificationEmailBody(recipient *model.User, post *model.Post, 
 		}
 	} else if channel.Type == model.CHANNEL_GROUP {
 		if emailNotificationContentsType == model.EMAIL_NOTIFICATION_CONTENTS_FULL {
-			bodyText = translateFunc("app.notification.body.intro.group_message.full")
-			info = utils.TranslateAsHtml(translateFunc, "app.notification.body.text.group_message.full",
+			bodyPage.Props["BodyText"] = translateFunc("app.notification.body.intro.group_message.full")
+			bodyPage.Props["Info1"] = translateFunc("app.notification.body.text.group_message.full",
 				map[string]interface{}{
 					"ChannelName": channelName,
-					"SenderName":  senderName,
-					"Hour":        t.Hour,
-					"Minute":      t.Minute,
-					"TimeZone":    t.TimeZone,
-					"Month":       t.Month,
-					"Day":         t.Day,
+				})
+			bodyPage.Props["Info2"] = translateFunc("app.notification.body.text.group_message.full2",
+				map[string]interface{}{
+					"SenderName": senderName,
+					"Hour":       t.Hour,
+					"Minute":     t.Minute,
+					"TimeZone":   t.TimeZone,
+					"Month":      t.Month,
+					"Day":        t.Day,
 				})
 		} else {
-			bodyText = translateFunc("app.notification.body.intro.group_message.generic", map[string]interface{}{
+			bodyPage.Props["BodyText"] = translateFunc("app.notification.body.intro.group_message.generic", map[string]interface{}{
 				"SenderName": senderName,
 			})
-			info = utils.TranslateAsHtml(translateFunc, "app.notification.body.text.group_message.generic",
+			bodyPage.Props["Info"] = translateFunc("app.notification.body.text.group_message.generic",
 				map[string]interface{}{
 					"Hour":     t.Hour,
 					"Minute":   t.Minute,
@@ -604,22 +611,25 @@ func (a *App) getNotificationEmailBody(recipient *model.User, post *model.Post, 
 		}
 	} else {
 		if emailNotificationContentsType == model.EMAIL_NOTIFICATION_CONTENTS_FULL {
-			bodyText = translateFunc("app.notification.body.intro.notification.full")
-			info = utils.TranslateAsHtml(translateFunc, "app.notification.body.text.notification.full",
+			bodyPage.Props["BodyText"] = translateFunc("app.notification.body.intro.notification.full")
+			bodyPage.Props["Info1"] = translateFunc("app.notification.body.text.notification.full",
 				map[string]interface{}{
 					"ChannelName": channelName,
-					"SenderName":  senderName,
-					"Hour":        t.Hour,
-					"Minute":      t.Minute,
-					"TimeZone":    t.TimeZone,
-					"Month":       t.Month,
-					"Day":         t.Day,
+				})
+			bodyPage.Props["Info2"] = translateFunc("app.notification.body.text.notification.full2",
+				map[string]interface{}{
+					"SenderName": senderName,
+					"Hour":       t.Hour,
+					"Minute":     t.Minute,
+					"TimeZone":   t.TimeZone,
+					"Month":      t.Month,
+					"Day":        t.Day,
 				})
 		} else {
-			bodyText = translateFunc("app.notification.body.intro.notification.generic", map[string]interface{}{
+			bodyPage.Props["BodyText"] = translateFunc("app.notification.body.intro.notification.generic", map[string]interface{}{
 				"SenderName": senderName,
 			})
-			info = utils.TranslateAsHtml(translateFunc, "app.notification.body.text.notification.generic",
+			bodyPage.Props["Info"] = translateFunc("app.notification.body.text.notification.generic",
 				map[string]interface{}{
 					"Hour":     t.Hour,
 					"Minute":   t.Minute,
@@ -630,8 +640,6 @@ func (a *App) getNotificationEmailBody(recipient *model.User, post *model.Post, 
 		}
 	}
 
-	bodyPage.Props["BodyText"] = bodyText
-	bodyPage.Html["Info"] = info
 	bodyPage.Props["Button"] = translateFunc("api.templates.post_body.button")
 
 	return bodyPage.Render()
@@ -647,17 +655,34 @@ type formattedPostTime struct {
 	TimeZone string
 }
 
-func getFormattedPostTime(post *model.Post, translateFunc i18n.TranslateFunc) formattedPostTime {
-	tm := time.Unix(post.CreateAt/1000, 0)
-	zone, _ := tm.Zone()
+func getFormattedPostTime(user *model.User, post *model.Post, useMilitaryTime bool, translateFunc i18n.TranslateFunc) formattedPostTime {
+	preferredTimezone := user.GetPreferredTimezone()
+	postTime := time.Unix(post.CreateAt/1000, 0)
+	zone, _ := postTime.Zone()
+
+	localTime := postTime
+	if preferredTimezone != "" {
+		loc, _ := time.LoadLocation(preferredTimezone)
+		if loc != nil {
+			localTime = postTime.In(loc)
+			zone, _ = localTime.Zone()
+		}
+	}
+
+	hour := localTime.Format("15")
+	period := ""
+	if !useMilitaryTime {
+		hour = localTime.Format("3")
+		period = " " + localTime.Format("PM")
+	}
 
 	return formattedPostTime{
-		Time:     tm,
-		Year:     fmt.Sprintf("%d", tm.Year()),
-		Month:    translateFunc(tm.Month().String()),
-		Day:      fmt.Sprintf("%d", tm.Day()),
-		Hour:     fmt.Sprintf("%02d", tm.Hour()),
-		Minute:   fmt.Sprintf("%02d", tm.Minute()),
+		Time:     localTime,
+		Year:     fmt.Sprintf("%d", localTime.Year()),
+		Month:    translateFunc(localTime.Month().String()),
+		Day:      fmt.Sprintf("%d", localTime.Day()),
+		Hour:     fmt.Sprintf("%s", hour),
+		Minute:   fmt.Sprintf("%02d"+period, localTime.Minute()),
 		TimeZone: zone,
 	}
 }
@@ -699,24 +724,13 @@ func (a *App) GetMessageForNotification(post *model.Post, translateFunc i18n.Tra
 
 func (a *App) sendPushNotification(post *model.Post, user *model.User, channel *model.Channel, channelName string, sender *model.User, senderName string,
 	explicitMention, channelWideMention bool, replyToThreadType string) *model.AppError {
-	contentsConfig := *a.Config().EmailSettings.PushNotificationContents
+	cfg := a.Config()
+	contentsConfig := *cfg.EmailSettings.PushNotificationContents
+	teammateNameConfig := *cfg.TeamSettings.TeammateNameDisplay
 	sessions, err := a.getMobileAppSessions(user.Id)
+	sentBySystem := senderName == utils.T("system.message.name")
 	if err != nil {
 		return err
-	}
-
-	if channel.Type == model.CHANNEL_DIRECT {
-		if senderName == utils.T("system.message.name") {
-			channelName = senderName
-		} else {
-			preference, prefError := a.GetPreferenceByCategoryAndNameForUser(user.Id, model.PREFERENCE_CATEGORY_DISPLAY_SETTINGS, "name_format")
-			if prefError != nil {
-				channelName = fmt.Sprintf("@%v", senderName)
-			} else {
-				channelName = fmt.Sprintf("@%v", sender.GetDisplayName(preference.Value))
-				senderName = channelName
-			}
-		}
 	}
 
 	msg := model.PushNotification{}
@@ -736,15 +750,28 @@ func (a *App) sendPushNotification(post *model.Post, user *model.User, channel *
 	msg.RootId = post.RootId
 	msg.SenderId = post.UserId
 
+	if !sentBySystem {
+		senderName = sender.GetDisplayName(teammateNameConfig)
+		preference, prefError := a.GetPreferenceByCategoryAndNameForUser(user.Id, model.PREFERENCE_CATEGORY_DISPLAY_SETTINGS, "name_format")
+		if prefError == nil && preference.Value != teammateNameConfig {
+			senderName = sender.GetDisplayName(preference.Value)
+		}
+	}
+
+	if channel.Type == model.CHANNEL_DIRECT {
+		channelName = fmt.Sprintf("@%v", senderName)
+	}
+
 	if contentsConfig != model.GENERIC_NO_CHANNEL_NOTIFICATION || channel.Type == model.CHANNEL_DIRECT {
 		msg.ChannelName = channelName
 	}
 
-	if ou, ok := post.Props["override_username"].(string); ok {
+	if ou, ok := post.Props["override_username"].(string); ok && cfg.ServiceSettings.EnablePostUsernameOverride {
 		msg.OverrideUsername = ou
+		senderName = ou
 	}
 
-	if oi, ok := post.Props["override_icon_url"].(string); ok {
+	if oi, ok := post.Props["override_icon_url"].(string); ok && cfg.ServiceSettings.EnablePostIconOverride {
 		msg.OverrideIconUrl = oi
 	}
 

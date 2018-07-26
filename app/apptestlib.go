@@ -496,6 +496,14 @@ func (me *TestHelper) SetupChannelScheme() *model.Scheme {
 	}
 }
 
+func (me *TestHelper) SetupPluginAPI() *PluginAPI {
+	manifest := &model.Manifest{
+		Id: "pluginid",
+	}
+
+	return NewPluginAPI(me.App, manifest)
+}
+
 type FakeClusterInterface struct {
 	clusterMessageHandler einterfaces.ClusterMessageHandler
 }

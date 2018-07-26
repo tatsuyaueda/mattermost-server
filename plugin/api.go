@@ -11,7 +11,8 @@ import (
 // The API can be used to retrieve data or perform actions on behalf of the plugin. Most methods
 // have direct counterparts in the REST API and very similar behavior.
 //
-// Plugins can obtain access to the API by implementing the OnActivate hook.
+// Plugins obtain access to the API by embedding MattermostPlugin and accessing the API member
+// directly.
 type API interface {
 	// LoadPluginConfiguration loads the plugin's configuration. dest should be a pointer to a
 	// struct that the configuration JSON can be unmarshalled to.
@@ -47,6 +48,16 @@ type API interface {
 
 	// UpdateUser updates a user.
 	UpdateUser(user *model.User) (*model.User, *model.AppError)
+
+	// GetUserStatus will get a user's status.
+	GetUserStatus(userId string) (*model.Status, *model.AppError)
+
+	// GetUserStatusesByIds will return a list of user statuses based on the provided slice of user IDs.
+	GetUserStatusesByIds(userIds []string) ([]*model.Status, *model.AppError)
+
+	// UpdateUserStatus will set a user's status until the user, or another integration/plugin, sets it back to online.
+	// The status parameter can be: "online", "away", "dnd", or "offline".
+	UpdateUserStatus(userId, status string) (*model.Status, *model.AppError)
 
 	// CreateTeam creates a team.
 	CreateTeam(team *model.Team) (*model.Team, *model.AppError)
@@ -90,14 +101,17 @@ type API interface {
 	// DeleteChannel deletes a channel.
 	DeleteChannel(channelId string) *model.AppError
 
-	// GetChannels gets a list of all channels.
+	// GetPublicChannelsForTeam gets a list of all channels.
 	GetPublicChannelsForTeam(teamId string, offset, limit int) (*model.ChannelList, *model.AppError)
 
 	// GetChannel gets a channel.
 	GetChannel(channelId string) (*model.Channel, *model.AppError)
 
-	// GetChannelByName gets a channel by its name.
-	GetChannelByName(name, teamId string) (*model.Channel, *model.AppError)
+	// GetChannelByName gets a channel by its name, given a team id.
+	GetChannelByName(teamId, name string) (*model.Channel, *model.AppError)
+
+	// GetChannelByNameForTeamName gets a channel by its name, given a team name.
+	GetChannelByNameForTeamName(teamName, channelName string) (*model.Channel, *model.AppError)
 
 	// GetDirectChannel gets a direct message channel.
 	GetDirectChannel(userId1, userId2 string) (*model.Channel, *model.AppError)
@@ -138,13 +152,13 @@ type API interface {
 	// UpdatePost updates a post.
 	UpdatePost(post *model.Post) (*model.Post, *model.AppError)
 
-	// Set will store a key-value pair, unique per plugin.
+	// KVSet will store a key-value pair, unique per plugin.
 	KVSet(key string, value []byte) *model.AppError
 
-	// Get will retrieve a value based on the key. Returns nil for non-existent keys.
+	// KVGet will retrieve a value based on the key. Returns nil for non-existent keys.
 	KVGet(key string) ([]byte, *model.AppError)
 
-	// Delete will remove a key-value pair. Returns nil for non-existent keys.
+	// KVDelete will remove a key-value pair. Returns nil for non-existent keys.
 	KVDelete(key string) *model.AppError
 
 	// PublishWebSocketEvent sends an event to WebSocket connections.
@@ -178,7 +192,7 @@ type API interface {
 	LogWarn(msg string, keyValuePairs ...interface{})
 }
 
-var Handshake = plugin.HandshakeConfig{
+var handshake = plugin.HandshakeConfig{
 	ProtocolVersion:  1,
 	MagicCookieKey:   "MATTERMOST_PLUGIN",
 	MagicCookieValue: "Securely message teams, anywhere.",

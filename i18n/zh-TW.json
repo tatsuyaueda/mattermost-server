@@ -192,6 +192,10 @@
     "translation": "%v 退出頻道。"
   },
   {
+    "id": "api.channel.patch_update_channel.forbidden.app_error",
+    "translation": "更新頻道成員時失敗"
+  },
+  {
     "id": "api.channel.post_channel_privacy_message.error",
     "translation": "發布頻道隱私更新訊息時失敗"
   },
@@ -306,6 +310,10 @@
   {
     "id": "api.command.invite_people.desc",
     "translation": "送個邀請函給您的 Mattermost 團隊"
+  },
+  {
+    "id": "api.command.invite_people.email_invitations_off",
+    "translation": "Email invitations are disabled, no invite(s) sent"
   },
   {
     "id": "api.command.invite_people.email_off",
@@ -575,6 +583,10 @@
     "translation": "訊息"
   },
   {
+    "id": "api.command_groupmsg.permission.app_error",
+    "translation": "You don't have the appropriate permissions to create a new group message."
+  },
+  {
     "id": "api.command_help.desc",
     "translation": "開啟 Mattermost 說明頁面"
   },
@@ -633,6 +645,10 @@
   {
     "id": "api.command_invite.user_already_in_channel.app_error",
     "translation": "{{.User}} 已在頻道當中。"
+  },
+  {
+    "id": "api.command_invite_people.permission.app_error",
+    "translation": "You don't have permission to invite new users to this server."
   },
   {
     "id": "api.command_join.desc",
@@ -725,6 +741,10 @@
   {
     "id": "api.command_msg.name",
     "translation": "訊息"
+  },
+  {
+    "id": "api.command_msg.permission.app_error",
+    "translation": "You don't have the appropriate permissions to direct message this user."
   },
   {
     "id": "api.command_mute.desc",
@@ -1423,6 +1443,10 @@
     "translation": "無法為其他使用者儲存互動。"
   },
   {
+    "id": "api.reaction.town_square_read_only",
+    "translation": "Reacting to posts is not possible in read-only channels."
+  },
+  {
     "id": "api.roles.patch_roles.license.error",
     "translation": "目前授權不支援進階權限。"
   },
@@ -1597,6 +1621,10 @@
   {
     "id": "api.team.import_team.unavailable.app_error",
     "translation": "要求格式錯誤：沒有檔案大小欄位。"
+  },
+  {
+    "id": "api.team.invite_members.disabled.app_error",
+    "translation": "Email invitations are disabled."
   },
   {
     "id": "api.team.invite_members.invalid_email.app_error",
@@ -2379,6 +2407,10 @@
     "translation": "匯入檔案中的版本訊息不正確或是不存在。請確定版本是匯入檔案當中的第一個物件並重新嘗試。"
   },
   {
+    "id": "app.import.emoji.bad_file.error",
+    "translation": "Error reading import emoji image file. Emoji with name: \"{{.EmojiName}}\""
+  },
+  {
     "id": "app.import.import_channel.scheme_deleted.error",
     "translation": "無法設定頻道使用已被刪除的配置。"
   },
@@ -2597,6 +2629,18 @@
   {
     "id": "app.import.validate_direct_post_import_data.user_missing.error",
     "translation": "缺少必要的直接訊息屬性：使用者。"
+  },
+  {
+    "id": "app.import.validate_emoji_import_data.empty.error",
+    "translation": "Import emoji data empty."
+  },
+  {
+    "id": "app.import.validate_emoji_import_data.image_missing.error",
+    "translation": "Import emoji image field missing or blank."
+  },
+  {
+    "id": "app.import.validate_emoji_import_data.name_missing.error",
+    "translation": "Import emoji name field missing or blank."
   },
   {
     "id": "app.import.validate_post_import_data.channel_missing.error",

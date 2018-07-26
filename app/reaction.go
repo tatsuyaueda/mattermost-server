@@ -4,6 +4,8 @@
 package app
 
 import (
+	"net/http"
+
 	"github.com/mattermost/mattermost-server/mlog"
 	"github.com/mattermost/mattermost-server/model"
 )
@@ -14,13 +16,31 @@ func (a *App) SaveReactionForPost(reaction *model.Reaction) (*model.Reaction, *m
 		return nil, err
 	}
 
+	if a.License() != nil && *a.Config().TeamSettings.ExperimentalTownSquareIsReadOnly {
+		var channel *model.Channel
+		if channel, err = a.GetChannel(post.ChannelId); err != nil {
+			return nil, err
+		}
+
+		if channel.Name == model.DEFAULT_CHANNEL {
+			var user *model.User
+			if user, err = a.GetUser(reaction.UserId); err != nil {
+				return nil, err
+			}
+
+			if !a.RolesGrantPermission(user.GetRoles(), model.PERMISSION_MANAGE_SYSTEM.Id) {
+				return nil, model.NewAppError("saveReactionForPost", "api.reaction.town_square_read_only", nil, "", http.StatusForbidden)
+			}
+		}
+	}
+
 	if result := <-a.Srv.Store.Reaction().Save(reaction); result.Err != nil {
 		return nil, result.Err
 	} else {
 		reaction = result.Data.(*model.Reaction)
 
 		a.Go(func() {
-			a.sendReactionEvent(model.WEBSOCKET_EVENT_REACTION_ADDED, reaction, post)
+			a.sendReactionEvent(model.WEBSOCKET_EVENT_REACTION_ADDED, reaction, post, true)
 		})
 
 		return reaction, nil
@@ -41,18 +61,41 @@ func (a *App) DeleteReactionForPost(reaction *model.Reaction) *model.AppError {
 		return err
 	}
 
+	if a.License() != nil && *a.Config().TeamSettings.ExperimentalTownSquareIsReadOnly {
+		var channel *model.Channel
+		if channel, err = a.GetChannel(post.ChannelId); err != nil {
+			return err
+		}
+
+		if channel.Name == model.DEFAULT_CHANNEL {
+			var user *model.User
+			if user, err = a.GetUser(reaction.UserId); err != nil {
+				return err
+			}
+
+			if !a.RolesGrantPermission(user.GetRoles(), model.PERMISSION_MANAGE_SYSTEM.Id) {
+				return model.NewAppError("deleteReactionForPost", "api.reaction.town_square_read_only", nil, "", http.StatusForbidden)
+			}
+		}
+	}
+
+	hasReactions := true
+	if reactions, _ := a.GetReactionsForPost(post.Id); len(reactions) <= 1 {
+		hasReactions = false
+	}
+
 	if result := <-a.Srv.Store.Reaction().Delete(reaction); result.Err != nil {
 		return result.Err
 	} else {
 		a.Go(func() {
-			a.sendReactionEvent(model.WEBSOCKET_EVENT_REACTION_REMOVED, reaction, post)
+			a.sendReactionEvent(model.WEBSOCKET_EVENT_REACTION_REMOVED, reaction, post, hasReactions)
 		})
 	}
 
 	return nil
 }
 
-func (a *App) sendReactionEvent(event string, reaction *model.Reaction, post *model.Post) {
+func (a *App) sendReactionEvent(event string, reaction *model.Reaction, post *model.Post, hasReactions bool) {
 	// send out that a reaction has been added/removed
 	message := model.NewWebSocketEvent(event, "", post.ChannelId, "", nil)
 	message.Add("reaction", reaction.ToJson())
@@ -66,7 +109,7 @@ func (a *App) sendReactionEvent(event string, reaction *model.Reaction, post *mo
 	// The post is always modified since the UpdateAt always changes
 	a.InvalidateCacheForChannelPosts(post.ChannelId)
 
-	clientPost.HasReactions = true
+	clientPost.HasReactions = hasReactions
 	clientPost.UpdateAt = model.GetMillis()
 
 	umessage := model.NewWebSocketEvent(model.WEBSOCKET_EVENT_POST_EDITED, "", post.ChannelId, "", nil)

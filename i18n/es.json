@@ -161,7 +161,7 @@
   },
   {
     "id": "api.channel.delete_channel.type.invalid",
-    "translation": "Cannot delete direct or group message channels"
+    "translation": "No se pueden eliminar canales de grupo o mensajes directos"
   },
   {
     "id": "api.channel.join_channel.already_deleted.app_error",
@@ -190,6 +190,10 @@
   {
     "id": "api.channel.leave.left",
     "translation": "%v abandonó el canal."
+  },
+  {
+    "id": "api.channel.patch_update_channel.forbidden.app_error",
+    "translation": "Error al actualizar el canal"
   },
   {
     "id": "api.channel.post_channel_privacy_message.error",
@@ -306,6 +310,10 @@
   {
     "id": "api.command.invite_people.desc",
     "translation": "Envía un correo de invitación a tu equipo de Mattermost"
+  },
+  {
+    "id": "api.command.invite_people.email_invitations_off",
+    "translation": "Las invitaciones por correo electrónico han sido inhabilitadas, no se enviaron invitaciones"
   },
   {
     "id": "api.command.invite_people.email_off",
@@ -575,6 +583,10 @@
     "translation": "mensaje"
   },
   {
+    "id": "api.command_groupmsg.permission.app_error",
+    "translation": "No tienes los permisos necesarios para crear un grupo de mensajes."
+  },
+  {
     "id": "api.command_help.desc",
     "translation": "Abrir la página de ayuda de Mattermost"
   },
@@ -633,6 +645,10 @@
   {
     "id": "api.command_invite.user_already_in_channel.app_error",
     "translation": "{{.User}} ya está en el canal."
+  },
+  {
+    "id": "api.command_invite_people.permission.app_error",
+    "translation": "No tienes permiso para invitar nuevos usuarios a este servidor."
   },
   {
     "id": "api.command_join.desc",
@@ -725,6 +741,10 @@
   {
     "id": "api.command_msg.name",
     "translation": "mensaje"
+  },
+  {
+    "id": "api.command_msg.permission.app_error",
+    "translation": "No tienes los permisos necesarios para enviar un mensaje directo a este usuario."
   },
   {
     "id": "api.command_mute.desc",
@@ -1423,6 +1443,10 @@
     "translation": "No puedes guardar una reacción de otro usuario."
   },
   {
+    "id": "api.reaction.town_square_read_only",
+    "translation": "No se puede reaccionar a mensajes en canales de sólo lectura."
+  },
+  {
     "id": "api.roles.patch_roles.license.error",
     "translation": "La licencia actual no admite los permisos avanzados."
   },
@@ -1597,6 +1621,10 @@
   {
     "id": "api.team.import_team.unavailable.app_error",
     "translation": "Solicitud con formato incorrecto: campo con el tamaño del archivo no está presente."
+  },
+  {
+    "id": "api.team.invite_members.disabled.app_error",
+    "translation": "Invitaciones por correo electrónico inhabilitadas."
   },
   {
     "id": "api.team.invite_members.invalid_email.app_error",
@@ -2379,6 +2407,10 @@
     "translation": "Versión incorrecta o faltante en el archivo de importación de datos. Asegura que la versión sea el primer objeto en el archivo de importación e intenta nuevamente."
   },
   {
+    "id": "app.import.emoji.bad_file.error",
+    "translation": "Error al leer el archivo importado con la imagen del emoticon. Nombre del Emoticon: \"{{.EmojiName}}\""
+  },
+  {
     "id": "app.import.import_channel.scheme_deleted.error",
     "translation": "No se puede asignar un esquema borrado a un canal."
   },
@@ -2597,6 +2629,18 @@
   {
     "id": "app.import.validate_direct_post_import_data.user_missing.error",
     "translation": "Falta la propiedad obligatoria del mensaje del canal directo: user"
+  },
+  {
+    "id": "app.import.validate_emoji_import_data.empty.error",
+    "translation": "Datos de importación del emoticon vacío."
+  },
+  {
+    "id": "app.import.validate_emoji_import_data.image_missing.error",
+    "translation": "El campo de imagén del emoticon en la importación está faltante o vacío."
+  },
+  {
+    "id": "app.import.validate_emoji_import_data.name_missing.error",
+    "translation": "El campo del nombre del emoticon en la importación está faltante o vacío."
   },
   {
     "id": "app.import.validate_post_import_data.channel_missing.error",
@@ -3784,7 +3828,7 @@
   },
   {
     "id": "model.config.is_valid.display.custom_url_schemes.app_error",
-    "translation": "El esquema de URL personalizado {{.Scheme}} no es válido. Los esquemas de URL personalizados deben empezar con una letra, contener solo letras, números, más (+), punto (.), y guion (-)."
+    "translation": "El esquema de URL personalizado {{.Scheme}} no es válido. Los esquemas de URL personalizados deben empezar con una letra, sólo tener letras, números y guion (-)."
   },
   {
     "id": "model.config.is_valid.elastic_search.aggregate_posts_after_days.app_error",
