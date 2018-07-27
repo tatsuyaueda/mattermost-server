@@ -4,8 +4,8 @@
 package plugin
 
 import (
-	"crypto/md5"
 	"fmt"
+	"hash/fnv"
 	"io/ioutil"
 	"path/filepath"
 	"sync"
@@ -187,7 +187,9 @@ func (env *Environment) Activate(id string) (manifest *model.Manifest, activated
 			return nil, false, errors.Wrapf(err, "unable to read webapp bundle: %v", id)
 		}
 
-		pluginInfo.Manifest.Webapp.BundleHash = md5.Sum(webappBundle)
+		hash := fnv.New64a()
+		hash.Write(webappBundle)
+		pluginInfo.Manifest.Webapp.BundleHash = hash.Sum([]byte{})
 
 		err = ioutil.WriteFile(fmt.Sprintf("%s/%s_%x_bundle.js", env.webappPluginDir, id, pluginInfo.Manifest.Webapp.BundleHash), webappBundle, 0644)
 		if err != nil {
