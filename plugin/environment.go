@@ -35,8 +35,7 @@ type activePlugin struct {
 // It is meant for use by the Mattermost server to manipulate, interact with and report on the set
 // of active plugins.
 type Environment struct {
-	activePlugins   map[string]activePlugin
-	mutex           sync.RWMutex
+	activePlugins   sync.Map
 	logger          *mlog.Logger
 	newAPIImpl      apiImplCreatorFunc
 	pluginDir       string
@@ -45,7 +44,6 @@ type Environment struct {
 
 func NewEnvironment(newAPIImpl apiImplCreatorFunc, pluginDir string, webappPluginDir string, logger *mlog.Logger) (*Environment, error) {
 	return &Environment{
-		activePlugins:   make(map[string]activePlugin),
 		logger:          logger,
 		newAPIImpl:      newAPIImpl,
 		pluginDir:       pluginDir,
@@ -84,28 +82,24 @@ func (env *Environment) Available() ([]*model.BundleInfo, error) {
 
 // Returns a list of all currently active plugins within the environment.
 func (env *Environment) Active() []*model.BundleInfo {
-	env.mutex.RLock()
-	defer env.mutex.RUnlock()
-
 	activePlugins := []*model.BundleInfo{}
-	for _, p := range env.activePlugins {
-		activePlugins = append(activePlugins, p.BundleInfo)
-	}
+	env.activePlugins.Range(func(key, value interface{}) bool {
+		activePlugins = append(activePlugins, value.(activePlugin).BundleInfo)
+
+		return true
+	})
 
 	return activePlugins
 }
 
 // IsActive returns true if the plugin with the given id is active.
 func (env *Environment) IsActive(id string) bool {
-	_, ok := env.activePlugins[id]
+	_, ok := env.activePlugins.Load(id)
 	return ok
 }
 
 // Statuses returns a list of plugin statuses representing the state of every plugin
 func (env *Environment) Statuses() (model.PluginStatuses, error) {
-	env.mutex.RLock()
-	defer env.mutex.RUnlock()
-
 	plugins, err := env.Available()
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to get plugin statuses")
@@ -119,8 +113,8 @@ func (env *Environment) Statuses() (model.PluginStatuses, error) {
 		}
 
 		pluginState := model.PluginStateNotRunning
-		if plugin, ok := env.activePlugins[plugin.Manifest.Id]; ok {
-			pluginState = plugin.State
+		if plugin, ok := env.activePlugins.Load(plugin.Manifest.Id); ok {
+			pluginState = plugin.(activePlugin).State
 		}
 
 		status := &model.PluginStatus{
@@ -140,11 +134,9 @@ func (env *Environment) Statuses() (model.PluginStatuses, error) {
 
 // Activate activates the plugin with the given id.
 func (env *Environment) Activate(id string) (manifest *model.Manifest, activated bool, reterr error) {
-	env.mutex.Lock()
-	defer env.mutex.Unlock()
 
 	// Check if we are already active
-	if _, ok := env.activePlugins[id]; ok {
+	if _, ok := env.activePlugins.Load(id); ok {
 		return nil, false, nil
 	}
 
@@ -172,7 +164,7 @@ func (env *Environment) Activate(id string) (manifest *model.Manifest, activated
 		} else {
 			activePlugin.State = model.PluginStateFailedToStart
 		}
-		env.activePlugins[pluginInfo.Manifest.Id] = activePlugin
+		env.activePlugins.Store(pluginInfo.Manifest.Id, activePlugin)
 	}()
 
 	if pluginInfo.Manifest.Webapp != nil {
@@ -210,19 +202,19 @@ func (env *Environment) Activate(id string) (manifest *model.Manifest, activated
 
 // Deactivates the plugin with the given id.
 func (env *Environment) Deactivate(id string) bool {
-	env.mutex.Lock()
-	defer env.mutex.Unlock()
-
-	if activePlugin, ok := env.activePlugins[id]; !ok {
+	p, ok := env.activePlugins.Load(id)
+	if !ok {
 		return false
-	} else {
-		delete(env.activePlugins, id)
-		if activePlugin.supervisor != nil {
-			if err := activePlugin.supervisor.Hooks().OnDeactivate(); err != nil {
-				env.logger.Error("Plugin OnDeactivate() error", mlog.String("plugin_id", activePlugin.BundleInfo.Manifest.Id), mlog.Err(err))
-			}
-			activePlugin.supervisor.Shutdown()
+	}
+
+	env.activePlugins.Delete(id)
+
+	activePlugin := p.(activePlugin)
+	if activePlugin.supervisor != nil {
+		if err := activePlugin.supervisor.Hooks().OnDeactivate(); err != nil {
+			env.logger.Error("Plugin OnDeactivate() error", mlog.String("plugin_id", activePlugin.BundleInfo.Manifest.Id), mlog.Err(err))
 		}
+		activePlugin.supervisor.Shutdown()
 	}
 
 	return true
@@ -230,30 +222,31 @@ func (env *Environment) Deactivate(id string) bool {
 
 // Shutdown deactivates all plugins and gracefully shuts down the environment.
 func (env *Environment) Shutdown() {
-	env.mutex.Lock()
-	defer env.mutex.Unlock()
+	env.activePlugins.Range(func(key, value interface{}) bool {
+		activePlugin := value.(activePlugin)
 
-	for _, activePlugin := range env.activePlugins {
 		if activePlugin.supervisor != nil {
 			if err := activePlugin.supervisor.Hooks().OnDeactivate(); err != nil {
 				env.logger.Error("Plugin OnDeactivate() error", mlog.String("plugin_id", activePlugin.BundleInfo.Manifest.Id), mlog.Err(err))
 			}
 			activePlugin.supervisor.Shutdown()
 		}
-	}
-	env.activePlugins = make(map[string]activePlugin)
-	return
+
+		env.activePlugins.Delete(key)
+
+		return true
+	})
 }
 
 // HooksForPlugin returns the hooks API for the plugin with the given id.
 //
 // Consider using RunMultiPluginHook instead.
 func (env *Environment) HooksForPlugin(id string) (Hooks, error) {
-	env.mutex.RLock()
-	defer env.mutex.RUnlock()
-
-	if plug, ok := env.activePlugins[id]; ok && plug.supervisor != nil {
-		return plug.supervisor.Hooks(), nil
+	if p, ok := env.activePlugins.Load(id); ok {
+		activePlugin := p.(activePlugin)
+		if activePlugin.supervisor != nil {
+			return activePlugin.supervisor.Hooks(), nil
+		}
 	}
 
 	return nil, fmt.Errorf("plugin not found: %v", id)
@@ -264,15 +257,16 @@ func (env *Environment) HooksForPlugin(id string) (Hooks, error) {
 // If hookRunnerFunc returns false, iteration will not continue. The iteration order among active
 // plugins is not specified.
 func (env *Environment) RunMultiPluginHook(hookRunnerFunc multiPluginHookRunnerFunc, hookId int) {
-	env.mutex.RLock()
-	defer env.mutex.RUnlock()
+	env.activePlugins.Range(func(key, value interface{}) bool {
+		activePlugin := value.(activePlugin)
 
-	for _, activePlugin := range env.activePlugins {
 		if activePlugin.supervisor == nil || !activePlugin.supervisor.Implements(hookId) {
-			continue
+			return true
 		}
 		if !hookRunnerFunc(activePlugin.supervisor.Hooks()) {
-			break
+			return false
 		}
-	}
+
+		return true
+	})
 }

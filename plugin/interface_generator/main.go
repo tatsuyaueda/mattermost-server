@@ -258,7 +258,7 @@ func (g *apiRPCClient) {{.Name}}{{funcStyle .Params}} {{funcStyle .Return}} {
 	_args := &{{.Name | obscure}}Args{ {{valuesOnly .Params}} }
 	_returns := &{{.Name | obscure}}Returns{}
 	if err := g.client.Call("Plugin.{{.Name}}", _args, _returns); err != nil {
-		g.log.Error("RPC call to {{.Name}} API failed.", mlog.Err(err))
+		log.Printf("RPC call to {{.Name}} API failed: %s", err.Error())
 	}
 	return {{destruct "_returns." .Return}}
 }
@@ -355,6 +355,7 @@ func removeExcluded(info *PluginInterfaceInfo) *PluginInterfaceInfo {
 			"Implemented",
 			"LoadPluginConfiguration",
 			"ServeHTTP",
+			"FileWillBeUploaded",
 		}
 		for _, exclusion := range excluded {
 			if exclusion == item {
