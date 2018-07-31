@@ -1,0 +1,47 @@
+version: 0.2
+
+env:
+  variables:
+    SRC_DIR_SERVER: src/github.com/mattermost/mattermost-server
+    SRC_DIR_WEBAPP: src/github.com/mattermost/mattermost-webapp
+
+phases:
+  install:
+    commands:
+      - apt-get update
+      - apt-get install -y build-essential npm golang zip libpng-dev git rename curl wget
+      - npm install npm@latest -g
+      - SOURCE_TAG=$(git describe --tags)
+      - SOURCE_TAG=${SOURCE_TAG%-unofficial}
+      - echo ${SOURCE_TAG}
+      - export GOPATH=${HOME}/go && echo ${GOPATH}
+      - export PATH=/usr/local/go/bin:${GOPATH}/bin:${PATH} && echo ${PATH}
+      - export BUILD_NUMBER=${SOURCE_TAG}-unofficial && echo ${BUILD_NUMBER}
+      - type go && go version
+  pre_build:
+    commands:
+      - mkdir -p ${GOPATH}/${SRC_DIR_SERVER} && cd ${GOPATH}/${SRC_DIR_SERVER}
+      - mv ${CODEBUILD_SRC_DIR}/* ${CODEBUILD_SRC_DIR}/.??* .
+      - mkdir -p ${GOPATH}/${SRC_DIR_WEBAPP} && cd ${GOPATH}/${SRC_DIR_WEBAPP}/..
+      - git clone https://github.com/mattermost/mattermost-webapp.git
+      - cd ${GOPATH}/${SRC_DIR_WEBAPP}
+      - git checkout refs/tags/${SOURCE_TAG}
+  build:
+    commands:
+      - cd ${GOPATH}/${SRC_DIR_SERVER}
+      - echo Build started on `date`
+      - echo Compiling the Go code...
+      - make build
+      - make build-client
+      - make config-reset
+      - make package
+      - rename 's/mattermost-team-(.+)/mattermost-team-$ENV{SOURCE_TAG}-unofficial-$1/' dist/*
+      - ls ./dist/
+  post_build:
+    commands:
+      - echo Build completed on `date`
+artifacts:
+  files: 
+    - 'dist/*'
+  base-directory: ${GOPATH}/${SRC_DIR_SERVER}
+  discard-paths: yes
