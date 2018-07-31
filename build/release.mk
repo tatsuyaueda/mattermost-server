@@ -13,7 +13,11 @@ build-windows:
 	@echo Build Windows amd64
 	env GOOS=windows GOARCH=amd64 $(GO) install -i $(GOFLAGS) $(GO_LINKER_FLAGS) ./...
 
-build: build-linux build-windows build-osx
+build-freebsd:
+	@echo Build FreeBSD amd64
+	env GOOS=freebsd GOARCH=amd64 $(GO) install -i $(GOFLAGS) $(GO_LINKER_FLAGS) ./...
+
+build: build-linux build-windows build-osx build-freebsd
 
 build-client:
 	@echo Building mattermost web app
@@ -60,6 +64,22 @@ endif
 	cp README.md $(DIST_PATH)
 
 	@# ----- PLATFORM SPECIFIC -----
+
+	@# Make FreeBSD package
+	@# Copy binary
+ifeq ($(BUILDER_GOOS_GOARCH),"freebsd_amd64")
+	cp $(GOPATH)/bin/mattermost $(DIST_PATH)/bin # from native bin dir, not cross-compiled
+	cp $(GOPATH)/bin/platform $(DIST_PATH)/bin # from native bin dir, not cross-compiled
+else
+	cp $(GOPATH)/bin/freebsd_amd64/mattermost $(DIST_PATH)/bin # from cross-compiled bin dir
+	cp $(GOPATH)/bin/freebsd_amd64/platform $(DIST_PATH)/bin # from cross-compiled bin dir
+endif
+	@# Package
+	tar -C dist -czf $(DIST_PATH)-$(BUILD_TYPE_NAME)-freebsd-amd64.tar.gz mattermost
+	@# Cleanup
+	rm -f $(DIST_PATH)/bin/mattermost
+	rm -f $(DIST_PATH)/bin/platform
+	rm -f $(DIST_PATH)/prepackaged_plugins/*
 
 	@# Make osx package
 	@# Copy binary
