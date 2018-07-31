@@ -1,0 +1,57 @@
+version: 0.2
+
+env:
+  variables:
+    #GO_VERSION: 1.9.2
+    SRC_DIR_SERVER: src/github.com/mattermost/mattermost-server
+    WEBAPP_URL: https://releases.mattermost.com/5.1.0/mattermost-team-5.1.0-linux-amd64.tar.gz
+    SRC_DIR_WEBAPP: src/github.com/mattermost/mattermost-webapp
+    #BUILD_NUMBER: 5.1.0-unofficial
+    BUILD_NUMBER: ${CODEBUILD_SOURCE_VERSION}
+
+phases:
+  install:
+    commands:
+      - apt-get update
+      - apt-get install build-essential
+      #- apt-get install libpng-dev
+      #- apt-get install curl
+      #- curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -
+      #- apt-get install -y nodejs
+      #- npm install npm@latest -g
+      # Install Golang
+      #- curl -sSL -o /tmp/go.tar.gz https://storage.googleapis.com/golang/go${GO_VERSION}.linux-amd64.tar.gz
+      #- tar -C /usr/local -xzf /tmp/go.tar.gz
+      - export GOPATH=${HOME}/go && echo ${GOPATH}
+      - export PATH=/usr/local/go/bin:${GOPATH}/bin:${PATH} && echo ${PATH}
+      - type go && go version
+  pre_build:
+    commands:
+      - mkdir -p ${GOPATH}/${SRC_DIR_SERVER} && cd ${GOPATH}/${SRC_DIR_SERVER}
+      - mv ${CODEBUILD_SRC_DIR}/* ${CODEBUILD_SRC_DIR}/.??* .
+      #- mkdir -p ${GOPATH}/${SRC_DIR_WEBAPP} && cd ${GOPATH}/${SRC_DIR_WEBAPP}/..
+      #- git clone https://github.com/mattermost/mattermost-webapp.git
+      - mkdir -p ~/temp
+      - cd ~/temp
+      - wget -O - ${WEBAPP_URL} | tar zxvf - -C ~/temp
+      - mkdir -p ${GOPATH}/${SRC_DIR_WEBAPP}/dist/
+      - cp -Rp ~/temp/mattermost/client/* ${GOPATH}/${SRC_DIR_WEBAPP}/dist/
+  build:
+    commands:
+      - cd ${GOPATH}/${SRC_DIR_SERVER}
+      - echo Build started on `date`
+      - echo Compiling the Go code...
+      - make build
+      #- make build-client
+      - make config-reset
+      - make package
+      - rename 's/mattermost-team-(.+)/mattermost-team-$ENV{CODEBUILD_SOURCE_VERSION}-$1/' dist/*
+      - ls ./dist/
+  post_build:
+    commands:
+      - echo Build completed on `date`
+artifacts:
+  files: 
+    - 'dist/*'
+  base-directory: ${GOPATH}/${SRC_DIR_SERVER}
+  discard-paths: yes
