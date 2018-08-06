@@ -5,6 +5,10 @@ build-linux:
 	@echo Build Linux amd64
 	env GOOS=linux GOARCH=amd64 $(GO) install -i $(GOFLAGS) $(GO_LINKER_FLAGS) ./...
 
+build-linux-arm:
+	@echo Build Linux amd64
+	env GOOS=linux GOARCH=arm $(GO) install -i $(GOFLAGS) $(GO_LINKER_FLAGS) ./...
+
 build-osx: 
 	@echo Build OSX amd64
 	env GOOS=darwin GOARCH=amd64 $(GO) install -i $(GOFLAGS) $(GO_LINKER_FLAGS) ./...
@@ -17,7 +21,7 @@ build-freebsd:
 	@echo Build FreeBSD amd64
 	env GOOS=freebsd GOARCH=amd64 $(GO) install -i $(GOFLAGS) $(GO_LINKER_FLAGS) ./...
 
-build: build-linux build-windows build-osx build-freebsd
+build: build-linux build-linux-arm build-windows build-osx build-freebsd
 
 build-client:
 	@echo Building mattermost web app
@@ -111,7 +115,7 @@ endif
 	rm -f $(DIST_PATH)/bin/mattermost.exe
 	rm -f $(DIST_PATH)/bin/platform.exe
 
-	@# Make linux package
+	@# Make linux amd64 package
 	@# Copy binary
 ifeq ($(BUILDER_GOOS_GOARCH),"linux_amd64")
 	cp $(GOPATH)/bin/mattermost $(DIST_PATH)/bin # from native bin dir, not cross-compiled
@@ -122,5 +126,19 @@ else
 endif
 	@# Package
 	tar -C dist -czf $(DIST_PATH)-$(BUILD_TYPE_NAME)-linux-amd64.tar.gz mattermost
+	@# Don't clean up native package so dev machines will have an unzipped package available
+	@#rm -f $(DIST_PATH)/bin/mattermost
+
+	@# Make linux arm package
+	@# Copy binary
+ifeq ($(BUILDER_GOOS_GOARCH),"linux_arm")
+	cp $(GOPATH)/bin/mattermost $(DIST_PATH)/bin # from native bin dir, not cross-compiled
+	cp $(GOPATH)/bin/platform $(DIST_PATH)/bin # from native bin dir, not cross-compiled
+else
+	cp $(GOPATH)/bin/linux_arm/mattermost $(DIST_PATH)/bin # from cross-compiled bin dir
+	cp $(GOPATH)/bin/linux_arm/platform $(DIST_PATH)/bin # from cross-compiled bin dir
+endif
+	@# Package
+	tar -C dist -czf $(DIST_PATH)-$(BUILD_TYPE_NAME)-linux-arm.tar.gz mattermost
 	@# Don't clean up native package so dev machines will have an unzipped package available
 	@#rm -f $(DIST_PATH)/bin/mattermost
