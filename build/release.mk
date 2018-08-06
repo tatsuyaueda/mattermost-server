@@ -6,7 +6,7 @@ build-linux:
 	env GOOS=linux GOARCH=amd64 $(GO) install -i $(GOFLAGS) $(GO_LINKER_FLAGS) ./...
 
 build-linux-arm:
-	@echo Build Linux amd64
+	@echo Build Linux arm
 	env GOOS=linux GOARCH=arm $(GO) install -i $(GOFLAGS) $(GO_LINKER_FLAGS) ./...
 
 build-osx: 
